@@ -1,8 +1,10 @@
 use std::convert::TryFrom;
 use std::str::FromStr;
+use std::fmt;
+
 #[allow(unused_variables)]
 #[derive(Debug, PartialEq)]
-struct ChunkType {
+pub struct ChunkType {
     bytes: [u8; 4],
 }
 
@@ -11,6 +13,22 @@ impl ChunkType {
         self.bytes
     }
 
+    fn is_critical(&self) -> bool {
+        (self.bytes[0] & 0b0010_0000) == 0
+    }
+
+}
+
+impl fmt::Display for ChunkType { 
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        for (i, byte) in self.bytes.iter().enumerate() {
+            if i > 0 {
+                write!(f, " ")?;
+            }
+            write!(f, "{:08b}", byte)?;
+        }
+        Ok(())
+    }
 }
 
 impl TryFrom<[u8; 4]> for ChunkType {
@@ -30,19 +48,14 @@ impl FromStr for ChunkType {
     type Err = &'static str;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.bytes().all(|b| b.is_ascii_alphabetic()) && s.bytes().len() == 4 {
-            let bytes_array: [u8; 4] = s.bytes().collect::<Vec<u8>>().try_into().unwrap();
-            Ok(Self { bytes: bytes_array })
+        let bytes: [u8; 4] = s
+            .as_bytes()
+            .try_into()
+            .map_err(|_| "Invalid length")?;
 
-        } else {
-            Err("Invalid chunk type")
-        }
+        ChunkType::try_from(bytes)
     }
 }
-
-
-
-fn main() {}
 
 #[cfg(test)]
 mod tests {
@@ -65,17 +78,17 @@ mod tests {
         assert_eq!(expected, actual);
     }
 
-    // #[test]
-    // pub fn test_chunk_type_is_critical() {
-    //     let chunk = ChunkType::from_str("RuSt").unwrap();
-    //     assert!(chunk.is_critical());
-    // }
+    #[test]
+    pub fn test_chunk_type_is_critical() {
+        let chunk = ChunkType::from_str("RuSt").unwrap();
+        assert!(chunk.is_critical());
+    }
 
-    // #[test]
-    // pub fn test_chunk_type_is_not_critical() {
-    //     let chunk = ChunkType::from_str("ruSt").unwrap();
-    //     assert!(!chunk.is_critical());
-    // }
+    #[test]
+    pub fn test_chunk_type_is_not_critical() {
+        let chunk = ChunkType::from_str("ruSt").unwrap();
+        assert!(!chunk.is_critical());
+    }
 
     // #[test]
     // pub fn test_chunk_type_is_public() {
